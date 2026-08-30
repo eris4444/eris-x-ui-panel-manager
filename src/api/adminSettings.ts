@@ -7,8 +7,8 @@ export type ConfigProxyOverride = {
 
 export type TlsSettings = {
   domain: string;
-  cert_path: string;
-  key_path: string;
+  has_cert: boolean;
+  has_key: boolean;
   enabled: boolean;
   nginx_available: boolean;
 };
@@ -80,8 +80,8 @@ export async function updateAdminCredentials(input: {
 
 export async function saveTlsConfig(input: {
   domain: string;
-  cert_path: string;
-  key_path: string;
+  cert_pem: string;
+  key_pem: string;
 }): Promise<void> {
   await api("/api/admin/settings/tls", {
     method: "PUT",

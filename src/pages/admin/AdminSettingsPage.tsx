@@ -36,7 +36,7 @@ const EMPTY_SETTINGS: AdminSettingsData = {
   username: "",
   config_overrides: [],
   subscription: { host: "", port: 0, detected_port: 0, effective_port: 2096, fallback_port: 2096 },
-  tls: { domain: "", cert_path: "", key_path: "", enabled: false, nginx_available: false }
+  tls: { domain: "", has_cert: false, has_key: false, enabled: false, nginx_available: false }
 };
 
 function inboundName(inbound: LiveAdminInbound | undefined, id: number): string {
@@ -61,8 +61,8 @@ export default function AdminSettingsPage() {
   const [subPort, setSubPort] = useState("");
 
   const [tlsDomain, setTlsDomain] = useState("");
-  const [tlsCertPath, setTlsCertPath] = useState("");
-  const [tlsKeyPath, setTlsKeyPath] = useState("");
+  const [tlsCertPem, setTlsCertPem] = useState("");
+  const [tlsKeyPem, setTlsKeyPem] = useState("");
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [adminUsername, setAdminUsername] = useState("");
@@ -85,8 +85,6 @@ export default function AdminSettingsPage() {
       setSubHost(data.subscription.host || "");
       setSubPort(data.subscription.port ? String(data.subscription.port) : "");
       setTlsDomain(data.tls.domain || "");
-      setTlsCertPath(data.tls.cert_path || "");
-      setTlsKeyPath(data.tls.key_path || "");
       setError("");
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : "Unable to load admin settings");
@@ -178,13 +176,15 @@ export default function AdminSettingsPage() {
     try {
       await saveTlsConfig({
         domain: tlsDomain.trim(),
-        cert_path: tlsCertPath.trim(),
-        key_path: tlsKeyPath.trim()
+        cert_pem: tlsCertPem.trim(),
+        key_pem: tlsKeyPem.trim()
       });
+      setTlsCertPem("");
+      setTlsKeyPem("");
       await loadSettings(true);
-      showToast("Certificate settings saved");
+      showToast("Certificate saved on the server");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to save certificate settings");
+      setError(err instanceof Error ? err.message : "Unable to save certificate");
     } finally { setBusy(false); }
   };
 
@@ -309,7 +309,7 @@ export default function AdminSettingsPage() {
       </> : null}
 
       {!loading && tab === "https" ? <section className="settings-section">
-        <div className="settings-section-title"><Lock size={18}/><div><h2>HTTPS / TLS Certificate</h2><p>Point the panel at a certificate and private key on this server, then switch the public site to HTTPS.</p></div></div>
+        <div className="settings-section-title"><Lock size={18}/><div><h2>HTTPS / TLS Certificate</h2><p>Paste your certificate and private key directly — no file paths needed. The panel stores them on the server and switches to HTTPS.</p></div></div>
 
         {!settings.tls.nginx_available ? (
           <div className="admin-settings-error" style={{position:"static", margin:"0 0 16px"}}>
@@ -320,21 +320,40 @@ export default function AdminSettingsPage() {
         <div className="admin-settings-card">
           <div className="admin-settings-grid two">
             <label><span>Domain</span><input value={tlsDomain} onChange={e=>setTlsDomain(e.target.value)} placeholder="panel.example.com"/></label>
-            <label><span>Status</span><input readOnly value={settings.tls.enabled ? "HTTPS enabled" : "HTTP only"}/></label>
-            <label><span>Certificate file path</span><input value={tlsCertPath} onChange={e=>setTlsCertPath(e.target.value)} placeholder="/etc/letsencrypt/live/panel.example.com/fullchain.pem"/></label>
-            <label><span>Private key file path</span><input value={tlsKeyPath} onChange={e=>setTlsKeyPath(e.target.value)} placeholder="/etc/letsencrypt/live/panel.example.com/privkey.pem"/></label>
+            <label><span>Status</span><input readOnly value={settings.tls.enabled ? "HTTPS enabled" : (settings.tls.has_cert && settings.tls.has_key ? "Certificate saved, HTTPS off" : "No certificate saved")}/></label>
+          </div>
+          <div className="admin-settings-grid two" style={{marginTop:14}}>
+            <label>
+              <span>Certificate (PEM){settings.tls.has_cert ? " — saved ✓" : ""}</span>
+              <textarea
+                rows={7}
+                value={tlsCertPem}
+                onChange={e=>setTlsCertPem(e.target.value)}
+                placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
+                style={{width:"100%", fontFamily:"monospace", fontSize:11, resize:"vertical"}}
+              />
+            </label>
+            <label>
+              <span>Private Key (PEM){settings.tls.has_key ? " — saved ✓" : ""}</span>
+              <textarea
+                rows={7}
+                value={tlsKeyPem}
+                onChange={e=>setTlsKeyPem(e.target.value)}
+                placeholder={"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}
+                style={{width:"100%", fontFamily:"monospace", fontSize:11, resize:"vertical"}}
+              />
+            </label>
           </div>
           <div className="admin-settings-actions">
-            <button className="admin-settings-primary" disabled={busy || !tlsDomain.trim() || !tlsCertPath.trim() || !tlsKeyPath.trim()} onClick={()=>void saveTls()}><Save size={17}/>Save Certificate Paths</button>
+            <button className="admin-settings-primary" disabled={busy || !tlsDomain.trim() || !tlsCertPem.trim() || !tlsKeyPem.trim()} onClick={()=>void saveTls()}><Save size={17}/>Save Certificate</button>
+            <button className="admin-settings-primary" disabled={busy || !settings.tls.domain || !settings.tls.has_cert || !settings.tls.has_key} onClick={()=>void turnOnHttps()}><Lock size={17}/>{settings.tls.enabled ? "Re-apply HTTPS" : "Enable HTTPS"}</button>
             {settings.tls.enabled ? (
               <button className="admin-settings-danger" disabled={busy} onClick={()=>void turnOffHttps()}><Lock size={17}/>Disable HTTPS</button>
-            ) : (
-              <button className="admin-settings-primary" disabled={busy || !settings.tls.domain || !settings.tls.cert_path || !settings.tls.key_path} onClick={()=>void turnOnHttps()}><Lock size={17}/>Enable HTTPS</button>
-            )}
+            ) : null}
           </div>
         </div>
 
-        <div className="settings-note"><CircleHelp size={17}/><span>Paths must point to files already present on this server (e.g. from Let's Encrypt/Certbot, or your own CA). Enabling HTTPS rewrites the panel's Nginx site to redirect port 80 to 443 using the certificate above, then reloads Nginx. If the certificate is renewed at the same path, no further action is required here.</span></div>
+        <div className="settings-note"><CircleHelp size={17}/><span>Paste the full certificate (or full chain) and its matching private key — including the BEGIN/END lines. Nothing is sent anywhere except this server: the panel writes them to a local file and reloads Nginx. To renew, paste the new certificate/key and click Save, then Re-apply HTTPS. The private key is never sent back to your browser after saving.</span></div>
       </section> : null}
 
       {!loading && tab === "backup" ? <section className="settings-section">

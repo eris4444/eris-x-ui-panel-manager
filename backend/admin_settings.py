@@ -44,6 +44,14 @@ NGINX_LINK = Path("/etc/nginx/sites-enabled/xui-reseller-panel")
 INTERNAL_PORT = 8000
 DEFAULT_PUBLIC_PORT = 8088
 
+# Pasted certificate/key content is written here instead of asking the admin
+# for file paths on the server (paths are easy to get wrong: wrong user,
+# relative path, symlink not readable by the service user, etc).
+TLS_DIR = Path(__file__).resolve().parent / "data" / "tls"
+TLS_CERT_PATH = TLS_DIR / "fullchain.pem"
+TLS_KEY_PATH = TLS_DIR / "privkey.pem"
+MAX_PEM_CHARS = 200_000
+
 
 class ConfigProxyBody(BaseModel):
     inbound_id: int = Field(gt=0)
@@ -65,8 +73,8 @@ class CredentialsBody(BaseModel):
 
 class TlsConfigBody(BaseModel):
     domain: str
-    cert_path: str
-    key_path: str
+    cert_pem: str
+    key_pem: str
 
 
 def _now() -> str:
@@ -547,12 +555,16 @@ def get_admin_settings(xui_session: str | None = Cookie(default=None, alias=SESS
         },
         "tls": {
             "domain": _get_setting("tls_domain", ""),
-            "cert_path": _get_setting("tls_cert_path", ""),
-            "key_path": _get_setting("tls_key_path", ""),
+            "has_cert": TLS_CERT_PATH.is_file(),
+            "has_key": TLS_KEY_PATH.is_file(),
             "enabled": _get_setting("tls_enabled", "false") == "true",
             "nginx_available": NGINX_SITE.parent.exists(),
         },
     }
+
+
+def _looks_like_pem(content: str, markers: tuple[str, ...]) -> bool:
+    return all(marker in content for marker in markers)
 
 
 @router.put("/tls")
@@ -560,23 +572,31 @@ def save_tls_config(body: TlsConfigBody, xui_session: str | None = Cookie(defaul
     _require_admin(xui_session)
 
     domain = str(body.domain or "").strip().lower()
-    cert_path = str(body.cert_path or "").strip()
-    key_path = str(body.key_path or "").strip()
+    cert_pem = str(body.cert_pem or "").strip().replace("\r\n", "\n")
+    key_pem = str(body.key_pem or "").strip().replace("\r\n", "\n")
 
     if not domain or not DOMAIN_RE.fullmatch(domain):
         raise HTTPException(status_code=400, detail="Enter a valid domain name, e.g. panel.example.com")
-    if not cert_path or not Path(cert_path).is_absolute():
-        raise HTTPException(status_code=400, detail="Certificate path must be an absolute path on the server")
-    if not key_path or not Path(key_path).is_absolute():
-        raise HTTPException(status_code=400, detail="Private key path must be an absolute path on the server")
-    if not Path(cert_path).is_file():
-        raise HTTPException(status_code=400, detail=f"Certificate file not found: {cert_path}")
-    if not Path(key_path).is_file():
-        raise HTTPException(status_code=400, detail=f"Private key file not found: {key_path}")
+    if len(cert_pem) > MAX_PEM_CHARS or len(key_pem) > MAX_PEM_CHARS:
+        raise HTTPException(status_code=400, detail="Certificate/key content is too large")
+    if not _looks_like_pem(cert_pem, ("-----BEGIN CERTIFICATE-----", "-----END CERTIFICATE-----")):
+        raise HTTPException(
+            status_code=400,
+            detail="Paste the full certificate, including -----BEGIN CERTIFICATE----- and -----END CERTIFICATE-----",
+        )
+    if "PRIVATE KEY-----" not in key_pem or "-----BEGIN" not in key_pem or "-----END" not in key_pem:
+        raise HTTPException(
+            status_code=400,
+            detail="Paste the full private key, including its -----BEGIN ... PRIVATE KEY----- and -----END ... PRIVATE KEY----- lines",
+        )
+
+    TLS_DIR.mkdir(parents=True, exist_ok=True)
+    TLS_CERT_PATH.write_text(cert_pem + "\n", encoding="utf-8")
+    TLS_KEY_PATH.write_text(key_pem + "\n", encoding="utf-8")
+    with contextlib.suppress(Exception):
+        os.chmod(TLS_KEY_PATH, 0o600)
 
     _set_setting("tls_domain", domain)
-    _set_setting("tls_cert_path", cert_path)
-    _set_setting("tls_key_path", key_path)
     return {"ok": True}
 
 
@@ -585,16 +605,12 @@ def enable_tls(xui_session: str | None = Cookie(default=None, alias=SESSION_COOK
     _require_admin(xui_session)
 
     domain = _get_setting("tls_domain", "")
-    cert_path = _get_setting("tls_cert_path", "")
-    key_path = _get_setting("tls_key_path", "")
 
-    if not domain or not cert_path or not key_path:
-        raise HTTPException(status_code=400, detail="Save a domain, certificate path and key path first")
-    if not Path(cert_path).is_file() or not Path(key_path).is_file():
-        raise HTTPException(status_code=400, detail="Certificate or key file no longer exists on disk")
+    if not domain or not TLS_CERT_PATH.is_file() or not TLS_KEY_PATH.is_file():
+        raise HTTPException(status_code=400, detail="Save a domain, certificate and private key first")
 
     port = _panel_public_port()
-    _write_and_reload_nginx(_https_nginx_config(port, domain, cert_path, key_path))
+    _write_and_reload_nginx(_https_nginx_config(port, domain, str(TLS_CERT_PATH), str(TLS_KEY_PATH)))
     _set_setting("tls_enabled", "true")
     return {"ok": True, "url": f"https://{domain}/"}
 
