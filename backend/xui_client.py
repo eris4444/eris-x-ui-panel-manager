@@ -272,6 +272,31 @@ class XUIClient:
             XUI_VERIFY_TLS
         )
 
+        # A bare "python-requests/x.y" User-Agent (and missing Origin/Referer)
+        # gets silently blocked as 403 by a lot of reverse proxies, CDNs and
+        # WAFs sitting in front of a real x-ui panel. Look like a browser
+        # request coming from the panel's own login page.
+        self.session.headers.update(
+            {
+                "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36",
+
+                "Accept":
+                    "application/json, text/plain, */*",
+
+                "X-Requested-With":
+                    "XMLHttpRequest",
+
+                "Origin":
+                    self.base,
+
+                "Referer":
+                    self.base + "/",
+            }
+        )
+
         self.logged_in = False
 
         if XUI_API_TOKEN:
@@ -311,94 +336,77 @@ class XUIClient:
             )
 
 
-        attempts = []
+        # Real x-ui/3x-ui panels expose a single login route that takes a
+        # classic HTML form post — that is what the panel's own login page
+        # submits, so try it first. The JSON variants below only exist to
+        # support older/forked panels; they are tried afterward and ONLY
+        # when the previous attempt's route did not exist (HTTP 404).
+        #
+        # Most x-ui builds also ship a brute-force login limiter that locks
+        # out an IP/account after a handful of failed attempts. Blindly
+        # firing every payload shape at every candidate route (as this used
+        # to do) could trip that limiter on its own and turn otherwise
+        # correct credentials into a false "login failed" — so once a
+        # candidate route responds with a definitive auth rejection
+        # (401/403), stop immediately instead of trying further guesses.
+        candidates: list[tuple[str, str, dict, bool]] = [
+            ("form", "/login", {"username": XUI_USERNAME, "password": XUI_PASSWORD}, False),
+            ("json", "/login", {"username": XUI_USERNAME, "password": XUI_PASSWORD}, True),
+            ("json", "/login", {"userName": XUI_USERNAME, "password": XUI_PASSWORD}, True),
+            ("json", "/panel/api/login", {"username": XUI_USERNAME, "password": XUI_PASSWORD}, True),
+            ("json", "/panel/api/login", {"userName": XUI_USERNAME, "password": XUI_PASSWORD}, True),
+        ]
 
+        attempts: list[str] = []
+        auth_rejected = False
 
-        for path in (
-            "/login",
-            "/panel/api/login",
-        ):
+        for kind, path, payload, as_json in candidates:
 
-            for payload in (
-                {
-                    "username":
-                        XUI_USERNAME,
+            try:
 
-                    "password":
-                        XUI_PASSWORD,
-                },
-
-                {
-                    "userName":
-                        XUI_USERNAME,
-
-                    "password":
-                        XUI_PASSWORD,
-                },
-            ):
-
-                try:
-
-                    response = (
-                        self.session.post(
-                            self.base + path,
-                            json=payload,
-                            timeout=20,
-                            verify=XUI_VERIFY_TLS,
-                        )
-                    )
-
-                    if response.status_code < 400:
-
-                        self.logged_in = True
-                        return
-
-                    attempts.append(
-                        f"{path}: HTTP {response.status_code}"
-                    )
-
-                except Exception as exc:
-
-                    attempts.append(
-                        f"{path}: {exc}"
-                    )
-
-
-        # Standard x-ui form login fallback.
-
-        try:
-
-            response = (
-                self.session.post(
-                    self.base + "/login",
-                    data={
-                        "username":
-                            XUI_USERNAME,
-
-                        "password":
-                            XUI_PASSWORD,
-                    },
+                response = self.session.post(
+                    self.base + path,
+                    json=payload if as_json else None,
+                    data=None if as_json else payload,
                     timeout=20,
                     verify=XUI_VERIFY_TLS,
                 )
+
+                if response.status_code < 400:
+
+                    self.logged_in = True
+                    return
+
+                attempts.append(
+                    f"{kind} {path}: HTTP {response.status_code}"
+                )
+
+                if response.status_code in (401, 403):
+
+                    auth_rejected = True
+                    break
+
+            except Exception as exc:
+
+                attempts.append(
+                    f"{kind} {path}: {exc}"
+                )
+
+
+        hint = ""
+
+        if auth_rejected:
+
+            hint = (
+                " (the panel rejected these credentials on a real login "
+                "route — double-check the X-UI username/password; note that "
+                "repeated failed attempts can trip the panel's own "
+                "temporary login lockout. A persistent 403 with correct "
+                "credentials usually means a proxy/WAF/CDN in front of the "
+                "panel is blocking the request, or the panel's X-Frame/"
+                "Origin protection needs XUI_BASE_URL to match its public "
+                "address exactly.)"
             )
-
-            if response.status_code < 400:
-
-                self.logged_in = True
-                return
-
-            attempts.append(
-                "form /login: "
-                f"HTTP {response.status_code}"
-            )
-
-        except Exception as exc:
-
-            attempts.append(
-                f"form /login: {exc}"
-            )
-
 
         raise XUIError(
             "x-ui login failed: "
@@ -406,6 +414,8 @@ class XUIClient:
             " | ".join(
                 attempts[-6:]
             )
+            +
+            hint
         )
 
 
