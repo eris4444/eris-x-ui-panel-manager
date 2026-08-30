@@ -135,11 +135,11 @@ export default function AdminLoginPage({
         <div className="login-logo">
 
           <div className="login-logo-mark">
-            X
+            E
           </div>
 
           <div className="login-logo-word">
-            x-ui
+            Eris
           </div>
 
         </div>
@@ -255,7 +255,7 @@ export default function AdminLoginPage({
 
       <footer className="login-footer">
 
-        x-ui admin interface
+        Eris X-UI Panel Manager — admin interface
 
       </footer>
 

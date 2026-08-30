@@ -4,13 +4,16 @@
    ========================================================= */
 
 :root {
-  --accent: #4d82cf;
-  --accent-hover: #5b8bd3;
-  --accent-border: #5e8bd0;
-  --accent-dim: #3d699c;
-  --accent-soft: rgba(77,130,207,.16);
-  --accent-selected-bg: rgba(77,130,207,.10);
-  --accent-contrast: #101820;
+  --accent: #b829ff;
+  --accent-2: #22d3ee;
+  --accent-hover: #c94dff;
+  --accent-border: #d16bff;
+  --accent-dim: #7a1bb0;
+  --accent-soft: rgba(184,41,255,.18);
+  --accent-selected-bg: rgba(184,41,255,.12);
+  --accent-contrast: #0a0616;
+  --accent-glow: 0 0 22px rgba(184,41,255,.55), 0 0 60px rgba(34,211,238,.18);
+  --accent-gradient: linear-gradient(135deg, #b829ff 0%, #7c3aed 45%, #22d3ee 100%);
 
   --green: #18b75b;
   --green-soft: #075f3a;
@@ -19,103 +22,127 @@
 
 /* Accent palettes */
 :root[data-accent="default"] {
-  --accent: #4d82cf;
-  --accent-hover: #5b8bd3;
-  --accent-border: #5e8bd0;
-  --accent-dim: #3d699c;
-  --accent-soft: rgba(77,130,207,.16);
-  --accent-selected-bg: rgba(77,130,207,.10);
-  --accent-contrast: #101820;
+  --accent: #b829ff;
+  --accent-2: #22d3ee;
+  --accent-hover: #c94dff;
+  --accent-border: #d16bff;
+  --accent-dim: #7a1bb0;
+  --accent-soft: rgba(184,41,255,.18);
+  --accent-selected-bg: rgba(184,41,255,.12);
+  --accent-contrast: #0a0616;
+  --accent-glow: 0 0 22px rgba(184,41,255,.55), 0 0 60px rgba(34,211,238,.18);
+  --accent-gradient: linear-gradient(135deg, #b829ff 0%, #7c3aed 45%, #22d3ee 100%);
 }
 
 :root[data-accent="red"] {
   --accent: #ef4444;
+  --accent-2: #fb923c;
   --accent-hover: #f05252;
   --accent-border: #f06464;
   --accent-dim: #b93737;
   --accent-soft: rgba(239,68,68,.16);
   --accent-selected-bg: rgba(239,68,68,.09);
   --accent-contrast: #160b0b;
+  --accent-glow: 0 0 22px rgba(239,68,68,.5), 0 0 60px rgba(251,146,60,.16);
+  --accent-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 45%, #fb923c 100%);
 }
 
 :root[data-accent="rose"] {
   --accent: #f43f5e;
+  --accent-2: #fb7185;
   --accent-hover: #fb5872;
   --accent-border: #fb6c82;
   --accent-dim: #bd3048;
   --accent-soft: rgba(244,63,94,.16);
   --accent-selected-bg: rgba(244,63,94,.09);
   --accent-contrast: #180a0e;
+  --accent-glow: 0 0 22px rgba(244,63,94,.5), 0 0 60px rgba(251,113,133,.16);
+  --accent-gradient: linear-gradient(135deg, #f43f5e 0%, #be123c 45%, #fb7185 100%);
 }
 
 :root[data-accent="orange"] {
   --accent: #f97316;
+  --accent-2: #facc15;
   --accent-hover: #fb8534;
   --accent-border: #fc9858;
   --accent-dim: #bf5911;
   --accent-soft: rgba(249,115,22,.16);
   --accent-selected-bg: rgba(249,115,22,.09);
   --accent-contrast: #191006;
+  --accent-glow: 0 0 22px rgba(249,115,22,.5), 0 0 60px rgba(250,204,21,.16);
+  --accent-gradient: linear-gradient(135deg, #f97316 0%, #c2410c 45%, #facc15 100%);
 }
 
 :root[data-accent="green"] {
   --accent: #22c55e;
+  --accent-2: #4ade80;
   --accent-hover: #39d071;
   --accent-border: #55d887;
   --accent-dim: #1b9448;
   --accent-soft: rgba(34,197,94,.16);
   --accent-selected-bg: rgba(34,197,94,.09);
   --accent-contrast: #07130b;
+  --accent-glow: 0 0 22px rgba(34,197,94,.5), 0 0 60px rgba(74,222,128,.16);
+  --accent-gradient: linear-gradient(135deg, #22c55e 0%, #15803d 45%, #4ade80 100%);
 }
 
 :root[data-accent="blue"] {
   --accent: #3b82f6;
+  --accent-2: #22d3ee;
   --accent-hover: #5592f7;
   --accent-border: #70a4f8;
   --accent-dim: #2d64be;
   --accent-soft: rgba(59,130,246,.16);
   --accent-selected-bg: rgba(59,130,246,.09);
   --accent-contrast: #08111f;
+  --accent-glow: 0 0 22px rgba(59,130,246,.5), 0 0 60px rgba(34,211,238,.16);
+  --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 45%, #22d3ee 100%);
 }
 
 :root[data-accent="yellow"] {
   --accent: #eab308;
+  --accent-2: #fde047;
   --accent-hover: #f1c328;
   --accent-border: #f5cf50;
   --accent-dim: #ac8506;
   --accent-soft: rgba(234,179,8,.16);
   --accent-selected-bg: rgba(234,179,8,.10);
   --accent-contrast: #181404;
+  --accent-glow: 0 0 22px rgba(234,179,8,.5), 0 0 60px rgba(253,224,71,.16);
+  --accent-gradient: linear-gradient(135deg, #eab308 0%, #a16207 45%, #fde047 100%);
 }
 
 :root[data-accent="violet"] {
   --accent: #8b5cf6;
+  --accent-2: #d946ef;
   --accent-hover: #9d75f7;
   --accent-border: #ad8bf8;
   --accent-dim: #6845ba;
   --accent-soft: rgba(139,92,246,.16);
   --accent-selected-bg: rgba(139,92,246,.10);
   --accent-contrast: #100b1c;
+  --accent-glow: 0 0 22px rgba(139,92,246,.5), 0 0 60px rgba(217,70,239,.16);
+  --accent-gradient: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 45%, #d946ef 100%);
 }
 
 /* DARK */
 :root[data-ui-mode="dark"] {
-  --bg: #18181a;
-  --sidebar: #1a1a1c;
-  --surface: #1d1d1f;
-  --surface-hover: #232427;
-  --surface-raised: #202023;
-  --surface-subtle: #1b1b1d;
-  --input-bg: #29292c;
-  --control-bg: #1c1c1e;
-  --border: #2e2f33;
-  --border-soft: #292a2d;
-  --border-strong: #393b40;
-  --text: #f5f5f6;
-  --text-2: #c6c8cc;
-  --muted: #96999f;
-  --muted-2: #74777d;
-  --shadow: rgba(0,0,0,.42);
+  --bg: #0a0a12;
+  --sidebar: #0c0c16;
+  --surface: #12121e;
+  --surface-hover: #1a1a2a;
+  --surface-raised: #15151f;
+  --surface-subtle: #101018;
+  --input-bg: #181826;
+  --control-bg: #12121c;
+  --border: #24243a;
+  --border-soft: #1d1d2e;
+  --border-strong: #33334f;
+  --text: #f3f1fb;
+  --text-2: #c3c1d8;
+  --muted: #8d8ba8;
+  --muted-2: #6b6987;
+  --shadow: rgba(0,0,0,.55);
 }
 
 /* LIGHT */
@@ -149,13 +176,34 @@ body,
 body,
 .app-shell,
 .content-shell {
-  background: var(--bg) !important;
+  background:
+    radial-gradient(1100px 620px at 8% -10%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    radial-gradient(900px 560px at 100% 0%, color-mix(in srgb, var(--accent-2, var(--accent)) 12%, transparent), transparent 55%),
+    var(--bg) !important;
   color: var(--text) !important;
 }
 
 .sidebar {
-  background: var(--sidebar) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--sidebar)) 0%, var(--sidebar) 40%) !important;
   border-color: var(--border) !important;
+  box-shadow: 1px 0 0 rgba(255,255,255,.02), 8px 0 40px rgba(0,0,0,.25);
+}
+
+.brand-mark {
+  background: var(--accent-gradient) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: var(--accent-glow);
+  font-weight: 800;
+}
+
+.brand-name {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: .01em;
 }
 
 .page-header {
@@ -164,7 +212,6 @@ body,
 }
 
 .page-header h1,
-.brand-name,
 .account-name {
   color: var(--text) !important;
 }
@@ -182,12 +229,6 @@ body,
   border-color: var(--accent) !important;
 }
 
-.brand-mark {
-  border-color: var(--border-strong) !important;
-  background: var(--surface-raised) !important;
-  color: var(--text) !important;
-}
-
 .nav-item {
   color: var(--text-2) !important;
 }
@@ -197,13 +238,20 @@ body,
   color: var(--text) !important;
 }
 
+.nav-item {
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+  border-radius: 10px;
+}
+
 .nav-item.active {
   background: var(--accent-soft) !important;
   color: var(--text) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .nav-item.active svg {
   color: var(--accent) !important;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent));
 }
 
 .support-row {
@@ -234,29 +282,48 @@ body,
   background: var(--surface) !important;
   border-color: var(--border) !important;
   color: var(--text) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 18px 40px rgba(0,0,0,.18);
+  transition: box-shadow .18s ease, transform .18s ease, border-color .18s ease;
+}
+
+.metric-card:hover,
+.panel:hover,
+.users-stat-card:hover,
+.up-stat-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border)) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 18px 40px rgba(0,0,0,.22), 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .metric-icon {
-  background: var(--accent-soft) !important;
-  color: var(--accent) !important;
+  background: var(--accent-gradient) !important;
+  color: #fff !important;
+  box-shadow: var(--accent-glow);
 }
 
 .status-badge {
-  background: var(--accent) !important;
-  color: var(--accent-contrast) !important;
+  background: var(--accent-gradient) !important;
+  color: #fff !important;
+  box-shadow: var(--accent-glow);
 }
 
 /* Users page accents */
 .up-create-button,
 .primary-button {
-  background: var(--accent) !important;
+  background: var(--accent-gradient) !important;
   border-color: var(--accent-border) !important;
-  color: var(--accent-contrast) !important;
+  color: #fff !important;
+  box-shadow: var(--accent-glow);
+  transition: filter .15s ease, transform .1s ease;
 }
 
 .up-create-button:hover,
 .primary-button:hover {
-  background: var(--accent-hover) !important;
+  filter: brightness(1.12);
+}
+
+.up-create-button:active,
+.primary-button:active {
+  transform: translateY(1px);
 }
 
 .up-search-box,
@@ -448,14 +515,47 @@ body,
   border-color: var(--accent-border) !important;
 }
 
-.cu-primary {
-  background: var(--accent) !important;
+.cu-primary,
+.admin-settings-primary {
+  background: var(--accent-gradient) !important;
   border-color: var(--accent-border) !important;
-  color: var(--accent-contrast) !important;
+  color: #fff !important;
+  box-shadow: var(--accent-glow);
+  transition: filter .15s ease;
 }
 
-.cu-primary:hover {
-  background: var(--accent-hover) !important;
+.cu-primary:hover,
+.admin-settings-primary:hover {
+  filter: brightness(1.12);
+}
+
+.settings-tab.active {
+  color: var(--text) !important;
+}
+
+.settings-tab.active::after {
+  background: var(--accent-gradient) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.login-logo-mark {
+  background: var(--accent-gradient) !important;
+  box-shadow: var(--accent-glow);
+  color: #fff !important;
+}
+
+.login-logo-word {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-submit {
+  background: var(--accent-gradient) !important;
+  border-color: var(--accent-border) !important;
+  color: #fff !important;
+  box-shadow: var(--accent-glow);
 }
 
 .sq-config-copy span {

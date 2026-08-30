@@ -326,4 +326,4 @@ echo
 echo "Management menu: sudo xui-panel"
 echo "Backend service: $SERVICE_NAME"
 echo "Public port: $PUBLIC_PORT"
-echo "TLS/domain: disabled by design in this release"
+echo "TLS/domain: point a certificate + key from the Admin Panel's Settings > HTTPS / TLS tab"

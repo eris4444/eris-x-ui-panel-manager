@@ -134,11 +134,11 @@ export default function LoginPage({
         <div className="login-logo">
 
           <div className="login-logo-mark">
-            X
+            E
           </div>
 
           <div className="login-logo-word">
-            x-ui
+            Eris
           </div>
 
         </div>
@@ -245,7 +245,7 @@ export default function LoginPage({
 
       <footer className="login-footer">
 
-        x-ui reseller interface
+        Eris X-UI Panel Manager — reseller interface
 
       </footer>
 

@@ -617,7 +617,7 @@ export default function DashboardPage() {
           "
         >
 
-          x-ui reseller interface
+          Eris X-UI Panel Manager — reseller interface
 
         </footer>
 

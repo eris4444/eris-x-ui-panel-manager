@@ -1,9 +1,9 @@
 [README.md](https://github.com/user-attachments/files/31534339/README-public.md)
-# X-UI Reseller Panel
+# Eris X-UI Panel Manager
 
-A modern web-based **Admin & Reseller Management Panel for X-UI / 3X-UI**.
+A modern web-based **Admin & Reseller Management Panel for X-UI / 3X-UI**, with a neon glass UI and built-in HTTPS/TLS certificate management.
 
-X-UI Reseller Panel provides a separate management interface for administrators and resellers while using your existing X-UI server as the source of truth for inbounds, clients, traffic usage, and account status.
+Eris X-UI Panel Manager provides a separate management interface for administrators and resellers while using your existing X-UI server as the source of truth for inbounds, clients, traffic usage, and account status.
 
 It is designed for server owners who want to give resellers controlled access to create and manage users without giving them direct access to the main X-UI panel.
 

@@ -1,19 +1,19 @@
 import {
-  Check, CircleHelp, DatabaseBackup, Download, KeyRound, Laptop, Moon,
+  Check, CircleHelp, DatabaseBackup, Download, KeyRound, Laptop, Lock, Moon,
   Network, Palette, RefreshCcw, Save, Server, ShieldCheck, Sun, Trash2, Upload
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getLiveAdminInbounds, type LiveAdminInbound } from "../../api/adminInbounds";
 import {
-  downloadAdminBackup, getAdminSettings, removeConfigProxy, restoreAdminBackup,
-  saveConfigProxy, saveSubscriptionProxy, updateAdminCredentials,
-  type AdminSettingsData, type ConfigProxyOverride
+  disableTls, downloadAdminBackup, enableTls, getAdminSettings, removeConfigProxy,
+  restoreAdminBackup, saveConfigProxy, saveSubscriptionProxy, saveTlsConfig,
+  updateAdminCredentials, type AdminSettingsData, type ConfigProxyOverride
 } from "../../api/adminSettings";
 import {
   type AccentColor, type UiMode, useThemeSettings
 } from "../../theme/ThemeProvider";
 
-type Tab = "theme" | "proxy" | "backup" | "account";
+type Tab = "theme" | "proxy" | "https" | "backup" | "account";
 
 const modes: Array<{ id: UiMode; title: string; description: string; icon: typeof Sun }> = [
   { id: "light", title: "Light", description: "Bright and clean", icon: Sun },
@@ -35,7 +35,8 @@ const colors: Array<{ id: AccentColor; title: string; swatch: string }> = [
 const EMPTY_SETTINGS: AdminSettingsData = {
   username: "",
   config_overrides: [],
-  subscription: { host: "", port: 0, detected_port: 0, effective_port: 2096, fallback_port: 2096 }
+  subscription: { host: "", port: 0, detected_port: 0, effective_port: 2096, fallback_port: 2096 },
+  tls: { domain: "", cert_path: "", key_path: "", enabled: false, nginx_available: false }
 };
 
 function inboundName(inbound: LiveAdminInbound | undefined, id: number): string {
@@ -59,6 +60,10 @@ export default function AdminSettingsPage() {
   const [subHost, setSubHost] = useState("");
   const [subPort, setSubPort] = useState("");
 
+  const [tlsDomain, setTlsDomain] = useState("");
+  const [tlsCertPath, setTlsCertPath] = useState("");
+  const [tlsKeyPath, setTlsKeyPath] = useState("");
+
   const [currentPassword, setCurrentPassword] = useState("");
   const [adminUsername, setAdminUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -79,6 +84,9 @@ export default function AdminSettingsPage() {
       setAdminUsername(data.username || "");
       setSubHost(data.subscription.host || "");
       setSubPort(data.subscription.port ? String(data.subscription.port) : "");
+      setTlsDomain(data.tls.domain || "");
+      setTlsCertPath(data.tls.cert_path || "");
+      setTlsKeyPath(data.tls.key_path || "");
       setError("");
     } catch (err) {
       if (!silent) setError(err instanceof Error ? err.message : "Unable to load admin settings");
@@ -165,6 +173,44 @@ export default function AdminSettingsPage() {
     } finally { setBusy(false); }
   };
 
+  const saveTls = async () => {
+    setBusy(true);
+    try {
+      await saveTlsConfig({
+        domain: tlsDomain.trim(),
+        cert_path: tlsCertPath.trim(),
+        key_path: tlsKeyPath.trim()
+      });
+      await loadSettings(true);
+      showToast("Certificate settings saved");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save certificate settings");
+    } finally { setBusy(false); }
+  };
+
+  const turnOnHttps = async () => {
+    setBusy(true);
+    try {
+      const result = await enableTls();
+      await loadSettings(true);
+      showToast(`HTTPS enabled — ${result.url}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to enable HTTPS");
+    } finally { setBusy(false); }
+  };
+
+  const turnOffHttps = async () => {
+    if (!window.confirm("Disable HTTPS and go back to plain HTTP?")) return;
+    setBusy(true);
+    try {
+      await disableTls();
+      await loadSettings(true);
+      showToast("HTTPS disabled");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to disable HTTPS");
+    } finally { setBusy(false); }
+  };
+
   const changeCredentials = async () => {
     if (!currentPassword) { setError("Current password is required"); return; }
     if (newPassword !== confirmPassword) { setError("New passwords do not match"); return; }
@@ -209,6 +255,7 @@ export default function AdminSettingsPage() {
       <div className="settings-tab-row admin-settings-tabs">
         <button className={`settings-tab ${tab === "theme" ? "active" : ""}`} onClick={()=>setTab("theme")}><Palette size={17}/><span>Theme</span></button>
         <button className={`settings-tab ${tab === "proxy" ? "active" : ""}`} onClick={()=>setTab("proxy")}><Network size={17}/><span>External Proxy</span></button>
+        <button className={`settings-tab ${tab === "https" ? "active" : ""}`} onClick={()=>setTab("https")}><Lock size={17}/><span>HTTPS / TLS</span></button>
         <button className={`settings-tab ${tab === "backup" ? "active" : ""}`} onClick={()=>setTab("backup")}><DatabaseBackup size={17}/><span>Backup</span></button>
         <button className={`settings-tab ${tab === "account" ? "active" : ""}`} onClick={()=>setTab("account")}><KeyRound size={17}/><span>Admin Account</span></button>
       </div>
@@ -260,6 +307,35 @@ export default function AdminSettingsPage() {
           <div className="settings-note"><CircleHelp size={17}/><span>Leave a host empty to use the original x-ui output. Per-inbound External Port and Reality SID are optional; blank values keep the original config values.</span></div>
         </section>
       </> : null}
+
+      {!loading && tab === "https" ? <section className="settings-section">
+        <div className="settings-section-title"><Lock size={18}/><div><h2>HTTPS / TLS Certificate</h2><p>Point the panel at a certificate and private key on this server, then switch the public site to HTTPS.</p></div></div>
+
+        {!settings.tls.nginx_available ? (
+          <div className="admin-settings-error" style={{position:"static", margin:"0 0 16px"}}>
+            Nginx was not found on this server. HTTPS can only be applied on the same Linux/Nginx deployment created by install.sh.
+          </div>
+        ) : null}
+
+        <div className="admin-settings-card">
+          <div className="admin-settings-grid two">
+            <label><span>Domain</span><input value={tlsDomain} onChange={e=>setTlsDomain(e.target.value)} placeholder="panel.example.com"/></label>
+            <label><span>Status</span><input readOnly value={settings.tls.enabled ? "HTTPS enabled" : "HTTP only"}/></label>
+            <label><span>Certificate file path</span><input value={tlsCertPath} onChange={e=>setTlsCertPath(e.target.value)} placeholder="/etc/letsencrypt/live/panel.example.com/fullchain.pem"/></label>
+            <label><span>Private key file path</span><input value={tlsKeyPath} onChange={e=>setTlsKeyPath(e.target.value)} placeholder="/etc/letsencrypt/live/panel.example.com/privkey.pem"/></label>
+          </div>
+          <div className="admin-settings-actions">
+            <button className="admin-settings-primary" disabled={busy || !tlsDomain.trim() || !tlsCertPath.trim() || !tlsKeyPath.trim()} onClick={()=>void saveTls()}><Save size={17}/>Save Certificate Paths</button>
+            {settings.tls.enabled ? (
+              <button className="admin-settings-danger" disabled={busy} onClick={()=>void turnOffHttps()}><Lock size={17}/>Disable HTTPS</button>
+            ) : (
+              <button className="admin-settings-primary" disabled={busy || !settings.tls.domain || !settings.tls.cert_path || !settings.tls.key_path} onClick={()=>void turnOnHttps()}><Lock size={17}/>Enable HTTPS</button>
+            )}
+          </div>
+        </div>
+
+        <div className="settings-note"><CircleHelp size={17}/><span>Paths must point to files already present on this server (e.g. from Let's Encrypt/Certbot, or your own CA). Enabling HTTPS rewrites the panel's Nginx site to redirect port 80 to 443 using the certificate above, then reloads Nginx. If the certificate is renewed at the same path, no further action is required here.</span></div>
+      </section> : null}
 
       {!loading && tab === "backup" ? <section className="settings-section">
         <div className="settings-section-title"><DatabaseBackup size={18}/><div><h2>Backup & Restore</h2><p>Admin-only backup of the local panel database.</p></div></div>

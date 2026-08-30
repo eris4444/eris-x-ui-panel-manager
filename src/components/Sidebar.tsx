@@ -286,18 +286,18 @@ export default function Sidebar({
       <div className="brand-row">
 
         <div className="brand-mark">
-          X
+          E
         </div>
 
 
         <div className="brand-copy">
 
           <div className="brand-name">
-            x-ui
+            Eris
           </div>
 
           <div className="brand-version">
-            Reseller Panel
+            X-UI Panel Manager
           </div>
 
         </div>

@@ -5,6 +5,14 @@ export type ConfigProxyOverride = {
   reality_sid: string;
 };
 
+export type TlsSettings = {
+  domain: string;
+  cert_path: string;
+  key_path: string;
+  enabled: boolean;
+  nginx_available: boolean;
+};
+
 export type AdminSettingsData = {
   username: string;
   config_overrides: ConfigProxyOverride[];
@@ -15,6 +23,7 @@ export type AdminSettingsData = {
     effective_port: number;
     fallback_port: number;
   };
+  tls: TlsSettings;
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -67,6 +76,25 @@ export async function updateAdminCredentials(input: {
     method: "PUT",
     body: JSON.stringify(input)
   });
+}
+
+export async function saveTlsConfig(input: {
+  domain: string;
+  cert_path: string;
+  key_path: string;
+}): Promise<void> {
+  await api("/api/admin/settings/tls", {
+    method: "PUT",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function enableTls(): Promise<{ url: string }> {
+  return api("/api/admin/settings/tls/enable", { method: "POST" });
+}
+
+export async function disableTls(): Promise<void> {
+  await api("/api/admin/settings/tls/disable", { method: "POST" });
 }
 
 export async function downloadAdminBackup(): Promise<void> {

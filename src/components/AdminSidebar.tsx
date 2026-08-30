@@ -47,8 +47,8 @@ export default function AdminSidebar({ page, setPage, username, onLogout }: Prop
   return (
     <aside className="sidebar">
       <div className="brand-row">
-        <div className="brand-mark">X</div>
-        <div className="brand-copy"><div className="brand-name">x-ui</div><div className="brand-version">Admin Panel</div></div>
+        <div className="brand-mark">E</div>
+        <div className="brand-copy"><div className="brand-name">Eris</div><div className="brand-version">X-UI Panel Manager</div></div>
       </div>
 
       <div className="nav-section-label">Platform</div>

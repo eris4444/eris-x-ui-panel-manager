@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sqlite3
+import subprocess
 import tempfile
 import time
 from datetime import datetime
@@ -20,7 +21,7 @@ from pydantic import BaseModel, Field
 
 import backend.admin_representatives as admin_reps
 from backend.reseller_profile import SESSION_COOKIE, connect_db
-from backend.xui_client import XUIClient
+from backend.xui_client import XUIClient, env_string
 
 router = APIRouter(prefix="/api/admin/settings", tags=["Admin Settings"])
 
@@ -28,9 +29,20 @@ PBKDF2_ROUNDS = 200_000
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{3,64}$")
 HOST_RE = re.compile(r"^[A-Za-z0-9._:-]+$")
 SID_RE = re.compile(r"^[0-9a-fA-F]{0,32}$")
+DOMAIN_RE = re.compile(
+    r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
+    r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$"
+)
 MAX_RESTORE_BYTES = 128 * 1024 * 1024
 
 _SUB_PORT_CACHE: tuple[float, int] = (0.0, 0)
+
+# TLS / HTTPS: this mirrors the nginx site install.sh generates for the panel.
+APP_DIR = Path(__file__).resolve().parent.parent
+NGINX_SITE = Path("/etc/nginx/sites-available/xui-reseller-panel")
+NGINX_LINK = Path("/etc/nginx/sites-enabled/xui-reseller-panel")
+INTERNAL_PORT = 8000
+DEFAULT_PUBLIC_PORT = 8088
 
 
 class ConfigProxyBody(BaseModel):
@@ -49,6 +61,12 @@ class CredentialsBody(BaseModel):
     current_password: str
     username: str
     new_password: str = ""
+
+
+class TlsConfigBody(BaseModel):
+    domain: str
+    cert_path: str
+    key_path: str
 
 
 def _now() -> str:
@@ -400,6 +418,108 @@ def _save_pre_restore_backup() -> str:
     return str(path)
 
 
+def _panel_public_port() -> int:
+    try:
+        return int(env_string("PANEL_PUBLIC_PORT") or str(DEFAULT_PUBLIC_PORT))
+    except Exception:
+        return DEFAULT_PUBLIC_PORT
+
+
+_NGINX_LOCATIONS = """
+    location /api/ {{
+        proxy_pass http://127.0.0.1:{internal_port};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_buffering off;
+    }}
+
+    location /assets/ {{
+        try_files $uri =404;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }}
+
+    location / {{
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-cache";
+    }}
+"""
+
+
+def _http_only_nginx_config(port: int) -> str:
+    locations = _NGINX_LOCATIONS.format(internal_port=INTERNAL_PORT)
+    return f"""server {{
+    listen {port} default_server;
+    listen [::]:{port} default_server;
+    server_name _;
+
+    root {APP_DIR}/dist;
+    index index.html;
+    client_max_body_size 100M;
+{locations}}}
+"""
+
+
+def _https_nginx_config(port: int, domain: str, cert_path: str, key_path: str) -> str:
+    locations = _NGINX_LOCATIONS.format(internal_port=INTERNAL_PORT)
+    return f"""server {{
+    listen {port};
+    listen [::]:{port};
+    server_name {domain};
+    return 301 https://$host$request_uri;
+}}
+
+server {{
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name {domain};
+
+    ssl_certificate {cert_path};
+    ssl_certificate_key {key_path};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    root {APP_DIR}/dist;
+    index index.html;
+    client_max_body_size 100M;
+{locations}}}
+"""
+
+
+def _write_and_reload_nginx(config: str) -> None:
+    if not NGINX_SITE.parent.exists():
+        raise HTTPException(status_code=503, detail="Nginx site directory was not found on this server")
+
+    backup = NGINX_SITE.read_text(encoding="utf-8") if NGINX_SITE.exists() else None
+
+    try:
+        NGINX_SITE.write_text(config, encoding="utf-8")
+        NGINX_LINK.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(FileNotFoundError):
+            NGINX_LINK.unlink()
+        NGINX_LINK.symlink_to(NGINX_SITE)
+
+        test = subprocess.run(["nginx", "-t"], capture_output=True, text=True, timeout=15)
+        if test.returncode != 0:
+            raise RuntimeError(test.stderr.strip() or test.stdout.strip() or "nginx -t failed")
+
+        reload = subprocess.run(["systemctl", "reload", "nginx"], capture_output=True, text=True, timeout=15)
+        if reload.returncode != 0:
+            raise RuntimeError(reload.stderr.strip() or reload.stdout.strip() or "systemctl reload nginx failed")
+
+    except Exception as exc:
+        if backup is not None:
+            with contextlib.suppress(Exception):
+                NGINX_SITE.write_text(backup, encoding="utf-8")
+        raise HTTPException(status_code=500, detail=f"Failed to apply nginx configuration: {exc}") from exc
+
+
 @router.get("")
 def get_admin_settings(xui_session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
     admin = _require_admin(xui_session)
@@ -425,7 +545,68 @@ def get_admin_settings(xui_session: str | None = Cookie(default=None, alias=SESS
             "effective_port": effective,
             "fallback_port": 2096,
         },
+        "tls": {
+            "domain": _get_setting("tls_domain", ""),
+            "cert_path": _get_setting("tls_cert_path", ""),
+            "key_path": _get_setting("tls_key_path", ""),
+            "enabled": _get_setting("tls_enabled", "false") == "true",
+            "nginx_available": NGINX_SITE.parent.exists(),
+        },
     }
+
+
+@router.put("/tls")
+def save_tls_config(body: TlsConfigBody, xui_session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    _require_admin(xui_session)
+
+    domain = str(body.domain or "").strip().lower()
+    cert_path = str(body.cert_path or "").strip()
+    key_path = str(body.key_path or "").strip()
+
+    if not domain or not DOMAIN_RE.fullmatch(domain):
+        raise HTTPException(status_code=400, detail="Enter a valid domain name, e.g. panel.example.com")
+    if not cert_path or not Path(cert_path).is_absolute():
+        raise HTTPException(status_code=400, detail="Certificate path must be an absolute path on the server")
+    if not key_path or not Path(key_path).is_absolute():
+        raise HTTPException(status_code=400, detail="Private key path must be an absolute path on the server")
+    if not Path(cert_path).is_file():
+        raise HTTPException(status_code=400, detail=f"Certificate file not found: {cert_path}")
+    if not Path(key_path).is_file():
+        raise HTTPException(status_code=400, detail=f"Private key file not found: {key_path}")
+
+    _set_setting("tls_domain", domain)
+    _set_setting("tls_cert_path", cert_path)
+    _set_setting("tls_key_path", key_path)
+    return {"ok": True}
+
+
+@router.post("/tls/enable")
+def enable_tls(xui_session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    _require_admin(xui_session)
+
+    domain = _get_setting("tls_domain", "")
+    cert_path = _get_setting("tls_cert_path", "")
+    key_path = _get_setting("tls_key_path", "")
+
+    if not domain or not cert_path or not key_path:
+        raise HTTPException(status_code=400, detail="Save a domain, certificate path and key path first")
+    if not Path(cert_path).is_file() or not Path(key_path).is_file():
+        raise HTTPException(status_code=400, detail="Certificate or key file no longer exists on disk")
+
+    port = _panel_public_port()
+    _write_and_reload_nginx(_https_nginx_config(port, domain, cert_path, key_path))
+    _set_setting("tls_enabled", "true")
+    return {"ok": True, "url": f"https://{domain}/"}
+
+
+@router.post("/tls/disable")
+def disable_tls(xui_session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+    _require_admin(xui_session)
+
+    port = _panel_public_port()
+    _write_and_reload_nginx(_http_only_nginx_config(port))
+    _set_setting("tls_enabled", "false")
+    return {"ok": True}
 
 
 @router.put("/config-proxy")
