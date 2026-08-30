@@ -397,7 +397,7 @@ export default function Sidebar({
 
         <a
           className="github-project-link"
-          href="https://github.com/AMasoudKaveh/x-ui-reseller-panel"
+          href="https://github.com/eris4444/eris-x-ui-panel-manager"
           target="_blank"
           rel="noopener noreferrer"
           title="GitHub Project"

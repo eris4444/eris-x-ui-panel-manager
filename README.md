@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/31534339/README-public.md)
 # Eris X-UI Panel Manager
 
 A modern web-based **Admin & Reseller Management Panel for X-UI / 3X-UI**, with a neon glass UI and built-in HTTPS/TLS certificate management.
@@ -7,7 +6,7 @@ Eris X-UI Panel Manager provides a separate management interface for administrat
 
 It is designed for server owners who want to give resellers controlled access to create and manage users without giving them direct access to the main X-UI panel.
 
-> Public repository: https://github.com/AMasoudKaveh/x-ui-reseller-panel
+> Public repository: https://github.com/eris4444/eris-x-ui-panel-manager
 
 ---
 
@@ -119,8 +118,8 @@ apt update
 apt install -y git
 
 cd /opt
-git clone https://github.com/AMasoudKaveh/x-ui-reseller-panel.git
-cd x-ui-reseller-panel
+git clone https://github.com/eris4444/eris-x-ui-panel-manager.git
+cd eris-x-ui-panel-manager
 
 chmod +x install.sh manage.sh
 bash install.sh
@@ -488,7 +487,7 @@ Select:
 The updater pulls the latest version from:
 
 ```text
-https://github.com/AMasoudKaveh/x-ui-reseller-panel
+https://github.com/eris4444/eris-x-ui-panel-manager
 ```
 
 and rebuilds the frontend.
@@ -496,14 +495,14 @@ and rebuilds the frontend.
 To check the currently installed Git revision:
 
 ```bash
-cd /opt/xui-reseller-panel
+cd /opt/eris-x-ui-panel-manager
 git log --oneline -1
 ```
 
 If needed, you can also update manually:
 
 ```bash
-cd /opt/xui-reseller-panel
+cd /opt/eris-x-ui-panel-manager
 git pull origin main
 npm ci
 npm run build
@@ -587,7 +586,7 @@ The reseller panel stores its own reseller and management data separately.
 # Project Structure
 
 ```text
-x-ui-reseller-panel/
+eris-x-ui-panel-manager/
 ├── backend/
 │   ├── main.py
 │   ├── xui_client.py
@@ -669,7 +668,7 @@ systemctl restart nginx
 ## Check Installed Version
 
 ```bash
-cd /opt/xui-reseller-panel
+cd /opt/eris-x-ui-panel-manager
 git log --oneline -1
 ```
 
@@ -681,11 +680,7 @@ If you find a bug or want to suggest a feature, opening a GitHub Issue is prefer
 
 ### GitHub
 
-https://github.com/AMasoudKaveh/x-ui-reseller-panel
-
-### Telegram
-
-https://t.me/masoud_kve
+https://github.com/eris4444/eris-x-ui-panel-manager
 
 ---
 
@@ -701,13 +696,10 @@ Use it responsibly and review your server configuration before deploying it in p
 
 # Author
 
-**Masoud Kaveh**
+**eris4444**
 
 GitHub:  
-https://github.com/AMasoudKaveh
-
-Telegram:  
-https://t.me/masoud_kve
+https://github.com/eris4444
 
 ---
 
