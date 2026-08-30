@@ -280,7 +280,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="x-ui Local Auth API",
-    version="1.0.3",
+    version="1.0.4",
     lifespan=lifespan,
 )
 

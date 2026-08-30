@@ -33,6 +33,7 @@ DOMAIN_RE = re.compile(
     r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
     r"(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$"
 )
+SUB_PATH_RE = re.compile(r"^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$")
 MAX_RESTORE_BYTES = 128 * 1024 * 1024
 
 _SUB_PORT_CACHE: tuple[float, int] = (0.0, 0)
@@ -63,6 +64,7 @@ class ConfigProxyBody(BaseModel):
 class SubscriptionProxyBody(BaseModel):
     host: str = ""
     port: int = Field(default=0, ge=0, le=65535)
+    path: str = ""
 
 
 class CredentialsBody(BaseModel):
@@ -244,6 +246,11 @@ def subscription_port_values() -> tuple[int, int, int]:
     return manual, detected, effective
 
 
+def subscription_proxy_path() -> str:
+    path = _get_setting("subscription_proxy_path", "").strip().strip("/")
+    return path or "sub"
+
+
 def public_subscription_override(sub_id: str) -> str:
     sub_id = str(sub_id or "").strip()
     if not sub_id:
@@ -253,7 +260,8 @@ def public_subscription_override(sub_id: str) -> str:
         return ""
     _, _, port = subscription_port_values()
     authority = f"{host}:{port}" if port else host
-    return f"https://{authority}/sub/{quote(sub_id, safe='')}"
+    path = subscription_proxy_path()
+    return f"https://{authority}/{path}/{quote(sub_id, safe='')}"
 
 
 def _inbound_candidates(inbound_ids: list[int], xui: XUIClient) -> list[dict[str, Any]]:
@@ -551,6 +559,13 @@ def get_admin_settings(xui_session: str | None = Cookie(default=None, alias=SESS
             "detected_port": detected,
             "effective_port": effective,
             "fallback_port": 2096,
+            "path": subscription_proxy_path(),
+            "example_url": (
+                f"https://{_get_setting('subscription_proxy_host', '') }"
+                f"{':' + str(effective) if effective else ''}/{subscription_proxy_path()}/<sub_id>"
+                if _get_setting("subscription_proxy_host", "").strip()
+                else ""
+            ),
         },
         "tls": {
             "domain": _get_setting("tls_domain", ""),
@@ -663,10 +678,23 @@ def remove_config_proxy(inbound_id: int, xui_session: str | None = Cookie(defaul
 def save_subscription_proxy(body: SubscriptionProxyBody, xui_session: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
     _require_admin(xui_session)
     host = _normalize_host(body.host)
+    path = str(body.path or "").strip().strip("/")
+    if path and not SUB_PATH_RE.fullmatch(path):
+        raise HTTPException(
+            status_code=400,
+            detail="Path may only contain letters, numbers, dots, dashes, underscores and / between segments",
+        )
     _set_setting("subscription_proxy_host", host)
     _set_setting("subscription_proxy_port", str(int(body.port or 0)))
+    _set_setting("subscription_proxy_path", path)
     manual, detected, effective = subscription_port_values()
-    return {"ok": True, "port": manual, "detected_port": detected, "effective_port": effective}
+    return {
+        "ok": True,
+        "port": manual,
+        "detected_port": detected,
+        "effective_port": effective,
+        "path": subscription_proxy_path(),
+    }
 
 
 @router.put("/credentials")

@@ -22,6 +22,8 @@ export type AdminSettingsData = {
     detected_port: number;
     effective_port: number;
     fallback_port: number;
+    path: string;
+    example_url: string;
   };
   tls: TlsSettings;
 };
@@ -60,10 +62,10 @@ export async function removeConfigProxy(inboundId: number): Promise<void> {
   await api(`/api/admin/settings/config-proxy/${inboundId}`, { method: "DELETE" });
 }
 
-export async function saveSubscriptionProxy(host: string, port: number): Promise<void> {
+export async function saveSubscriptionProxy(host: string, port: number, path: string): Promise<void> {
   await api("/api/admin/settings/subscription-proxy", {
     method: "PUT",
-    body: JSON.stringify({ host, port })
+    body: JSON.stringify({ host, port, path })
   });
 }
 

@@ -1,5 +1,5 @@
 import {
-  Check, CircleHelp, DatabaseBackup, Download, KeyRound, Laptop, Lock, Moon,
+  Check, CircleHelp, Copy, DatabaseBackup, Download, KeyRound, Laptop, Lock, Moon,
   Network, Palette, RefreshCcw, Save, Server, ShieldCheck, Sun, Trash2, Upload
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -35,7 +35,7 @@ const colors: Array<{ id: AccentColor; title: string; swatch: string }> = [
 const EMPTY_SETTINGS: AdminSettingsData = {
   username: "",
   config_overrides: [],
-  subscription: { host: "", port: 0, detected_port: 0, effective_port: 2096, fallback_port: 2096 },
+  subscription: { host: "", port: 0, detected_port: 0, effective_port: 2096, fallback_port: 2096, path: "sub", example_url: "" },
   tls: { domain: "", has_cert: false, has_key: false, enabled: false, nginx_available: false }
 };
 
@@ -59,6 +59,7 @@ export default function AdminSettingsPage() {
   const [proxySid, setProxySid] = useState("");
   const [subHost, setSubHost] = useState("");
   const [subPort, setSubPort] = useState("");
+  const [subPath, setSubPath] = useState("");
 
   const [tlsDomain, setTlsDomain] = useState("");
   const [tlsCertPem, setTlsCertPem] = useState("");
@@ -76,6 +77,16 @@ export default function AdminSettingsPage() {
     window.setTimeout(() => setToast(""), 1800);
   };
 
+  const copyExampleUrl = async () => {
+    if (!settings.subscription.example_url) return;
+    try {
+      await navigator.clipboard.writeText(settings.subscription.example_url);
+      showToast("Example subscription URL copied");
+    } catch {
+      setError("Unable to copy to clipboard");
+    }
+  };
+
   const loadSettings = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -84,6 +95,7 @@ export default function AdminSettingsPage() {
       setAdminUsername(data.username || "");
       setSubHost(data.subscription.host || "");
       setSubPort(data.subscription.port ? String(data.subscription.port) : "");
+      setSubPath(data.subscription.path || "");
       setTlsDomain(data.tls.domain || "");
       setError("");
     } catch (err) {
@@ -163,7 +175,7 @@ export default function AdminSettingsPage() {
   const saveSub = async () => {
     setBusy(true);
     try {
-      await saveSubscriptionProxy(subHost.trim(), Math.max(0, Number(subPort || 0)));
+      await saveSubscriptionProxy(subHost.trim(), Math.max(0, Number(subPort || 0)), subPath.trim());
       await loadSettings(true);
       showToast("Subscription proxy saved");
     } catch (err) {
@@ -295,16 +307,24 @@ export default function AdminSettingsPage() {
         </section>
 
         <section className="settings-section">
-          <div className="settings-section-title"><Network size={18}/><div><h2>Subscription External Proxy</h2><p>External public host and subscription port used for generated subscription links.</p></div></div>
+          <div className="settings-section-title"><Network size={18}/><div><h2>Subscription External Proxy</h2><p>Domain, port and URL path used to build the subscription links resellers copy to their clients.</p></div></div>
           <div className="admin-settings-card">
             <div className="admin-settings-grid two">
-              <label><span>Subscription Host</span><input value={subHost} onChange={e=>setSubHost(e.target.value)} placeholder="proxy.example.com"/></label>
+              <label><span>Subscription Domain / Host</span><input value={subHost} onChange={e=>setSubHost(e.target.value)} placeholder="proxy.example.com"/></label>
               <label><span>Subscription Port</span><input inputMode="numeric" value={subPort} onChange={e=>setSubPort(e.target.value.replace(/\D/g,""))} placeholder={String(settings.subscription.effective_port || 2096)}/></label>
+              <label><span>Subscription Path</span><input value={subPath} onChange={e=>setSubPath(e.target.value.replace(/^\/+|\/+$/g,""))} placeholder="sub"/></label>
             </div>
             <div className="admin-settings-port-note">{settings.subscription.detected_port ? `Detected from x-ui: ${settings.subscription.detected_port}` : `x-ui subscription port was not detected · fallback: ${settings.subscription.fallback_port || 2096}`} · Effective: <strong>{settings.subscription.port || settings.subscription.effective_port || 2096}</strong></div>
+            {settings.subscription.example_url ? (
+              <div className="admin-settings-port-note" style={{display:"flex", alignItems:"center", gap:8, flexWrap:"wrap"}}>
+                <span>Resulting subscription URL:</span>
+                <code style={{userSelect:"all"}}>{settings.subscription.example_url}</code>
+                <button className="admin-settings-primary" style={{minHeight:28, padding:"0 10px"}} onClick={()=>void copyExampleUrl()}><Copy size={14}/>Copy</button>
+              </div>
+            ) : null}
             <div className="admin-settings-actions"><button className="admin-settings-primary" disabled={busy} onClick={()=>void saveSub()}><Save size={17}/>Save Subscription Proxy</button></div>
           </div>
-          <div className="settings-note"><CircleHelp size={17}/><span>Leave a host empty to use the original x-ui output. Per-inbound External Port and Reality SID are optional; blank values keep the original config values.</span></div>
+          <div className="settings-note"><CircleHelp size={17}/><span>Leave the host empty to use the original x-ui output. Path defaults to <strong>sub</strong> — set it to match a custom subscription path configured on your x-ui panel. Each reseller copies the actual per-user link (with the real subscription ID) from their own Users page — this preview just shows the URL pattern they'll get.</span></div>
         </section>
       </> : null}
 
