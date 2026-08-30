@@ -353,7 +353,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        <div className="settings-note"><CircleHelp size={17}/><span>Paste the full certificate (or full chain) and its matching private key — including the BEGIN/END lines. Nothing is sent anywhere except this server: the panel writes them to a local file and reloads Nginx. To renew, paste the new certificate/key and click Save, then Re-apply HTTPS. The private key is never sent back to your browser after saving.</span></div>
+        <div className="settings-note"><CircleHelp size={17}/><span>Paste the full certificate (or full chain) and its matching private key — including the BEGIN/END lines. Nothing is sent anywhere except this server: the panel writes them to a local file and reloads Nginx. HTTPS is switched on for the same public panel port you already use (not port 443) — after enabling, open the panel with <strong>https://</strong> on that same port instead of <strong>http://</strong>. To renew, paste the new certificate/key and click Save, then Re-apply HTTPS. The private key is never sent back to your browser after saving.</span></div>
       </section> : null}
 
       {!loading && tab === "backup" ? <section className="settings-section">

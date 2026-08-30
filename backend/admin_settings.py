@@ -475,17 +475,16 @@ def _http_only_nginx_config(port: int) -> str:
 
 
 def _https_nginx_config(port: int, domain: str, cert_path: str, key_path: str) -> str:
+    # HTTPS is served on the SAME public panel port the admin already chose
+    # (whatever they picked during install, e.g. 2052) — not on 443. Forcing
+    # 443 would silently move the panel to a different port than the one
+    # configured/opened in the firewall, which is exactly what caused
+    # "SSL_ERROR_RX_RECORD_TOO_LONG": the browser spoke TLS to the chosen
+    # port while Nginx still only listened there in plain HTTP.
     locations = _NGINX_LOCATIONS.format(internal_port=INTERNAL_PORT)
     return f"""server {{
-    listen {port};
-    listen [::]:{port};
-    server_name {domain};
-    return 301 https://$host$request_uri;
-}}
-
-server {{
-    listen 443 ssl default_server;
-    listen [::]:443 ssl default_server;
+    listen {port} ssl default_server;
+    listen [::]:{port} ssl default_server;
     server_name {domain};
 
     ssl_certificate {cert_path};
@@ -612,7 +611,8 @@ def enable_tls(xui_session: str | None = Cookie(default=None, alias=SESSION_COOK
     port = _panel_public_port()
     _write_and_reload_nginx(_https_nginx_config(port, domain, str(TLS_CERT_PATH), str(TLS_KEY_PATH)))
     _set_setting("tls_enabled", "true")
-    return {"ok": True, "url": f"https://{domain}/"}
+    authority = domain if port == 443 else f"{domain}:{port}"
+    return {"ok": True, "url": f"https://{authority}/"}
 
 
 @router.post("/tls/disable")
